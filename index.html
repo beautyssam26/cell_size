@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>현미경 세포 크기 측정 가상 실험실</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: "Segoe UI", "Malgun Gothic", sans-serif;
+      background: #f4f7f6;
+      color: #263238;
+    }
+
+    .container {
+      max-width: 1050px;
+      margin: 0 auto;
+      padding: 24px;
+      background: #ffffff;
+      border-radius: 12px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      margin: 0 0 6px;
+      color: #2c3e50;
+      text-align: center;
+      font-size: 1.8rem;
+    }
+
+    .subtitle {
+      margin: 0 0 24px;
+      color: #64748b;
+      text-align: center;
+    }
+
+    .main-layout {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    .view-section {
+      flex: 1;
+      min-width: 420px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .control-section {
+      flex: 1;
+      min-width: 320px;
+      padding: 18px;
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      background: #f8fafc;
+    }
+
+    #microscope-view {
+      position: relative;
+      width: 400px;
+      height: 400px;
+      overflow: hidden;
+      border: 8px solid #2f3640;
+      border-radius: 50%;
+      background: #111827;
+      box-shadow: inset 0 0 24px rgba(0, 0, 0, 0.9);
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #microscope-view:active {
+      cursor: grabbing;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+
+    .step-card {
+      margin-bottom: 16px;
+      padding: 15px;
+      border-left: 4px solid #3498db;
+      border-radius: 6px;
+      background: #ffffff;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .step-card h3 {
+      margin: 0 0 10px;
+      color: #2471a3;
+      font-size: 1.05rem;
+    }
+
+    label {
+      display: block;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      font-weight: 700;
+    }
+
+    select,
+    input[type="number"] {
+      width: 100%;
+      margin-top: 5px;
+      padding: 9px;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      font-size: 0.95rem;
+    }
+
+    .btn {
+      width: 100%;
+      margin-top: 10px;
+      padding: 10px;
+      border: 0;
+      border-radius: 4px;
+      background: #27ae60;
+      color: #ffffff;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+
+    .btn:hover {
+      background: #1e8c4c;
+    }
+
+    .btn-secondary {
+      background: #64748b;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .btn-info {
+      background: #2980b9;
+    }
+
+    .btn-info:hover {
+      background: #216a99;
+    }
+
+    .result-box {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid #a7f3d0;
+      border-radius: 6px;
+      background: #ecfdf5;
+      color: #047857;
+      font-weight: 700;
+      text-align: center;
+      line-height: 1.5;
+    }
+
+    .warning-box {
+      border-color: #fde68a;
+      background: #fffbeb;
+      color: #92400e;
+    }
+
+    .hint {
+      margin: 8px 0 0;
+      color: #64748b;
+      font-size: 0.85rem;
+      line-height: 1.55;
+    }
+
+    .scale-info {
+      width: 400px;
+      margin-top: 12px;
+      padding: 10px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      background: #ffffff;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+
+    .scale-info strong {
+      color: #1d4ed8;
+    }
+
+    @media (max-width: 800px) {
+      body {
+        padding: 12px;
+      }
+
+      .container {
+        padding: 16px;
+      }
+
+      .view-section,
+      .control-section {
+        min-width: 100%;
+      }
+
+      #microscope-view,
+      .scale-info {
+        width: min(400px, 100%);
+      }
+
+      #microscope-view {
+        height: min(400px, calc(100vw - 56px));
+      }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>세포 크기 측정 가상 실험실</h1>
+    <p class="subtitle">
+      2022 개정 교육과정 「세포와 물질대사」: 접안·대물 마이크로미터를 이용한 세포 크기 측정
+    </p>
+
+    <div class="main-layout">
+      <section class="view-section">
+        <div id="microscope-view" aria-label="현미경 시야. 드래그하여 표본 위치를 이동할 수 있습니다.">
+          <canvas id="stageCanvas" width="400" height="400"></canvas>
+          <canvas id="eyepieceCanvas" width="400" height="400"></canvas>
+        </div>
+
+        <div class="scale-info" id="scaleInfo">
+          현재 대물렌즈: <strong>10×</strong><br />
+          접안 마이크로미터는 빨간색, 표본 또는 대물 마이크로미터는 파란색으로 표시됩니다.
+        </div>
+
+        <p class="hint">
+          현미경 시야를 드래그하여 표본을 이동하세요. 접안 마이크로미터의 빨간 눈금과 표본의 양 끝을 맞춘 뒤, 세포가 차지하는 눈금 수를 읽습니다.
+        </p>
+      </section>
+
+      <section class="control-section">
+        <div class="step-card">
+          <h3>1단계. 접안 마이크로미터 1눈금 길이 구하기</h3>
+
+          <label for="magSelect">대물렌즈 배율 선택</label>
+          <select id="magSelect">
+            <option value="10">10× 대물렌즈 (총배율 100×)</option>
+            <option value="40">40× 대물렌즈 (총배율 400×)</option>
+          </select>
+
+          <button class="btn btn-secondary" id="resetMicrometerButton">
+            대물 마이크로미터 중앙 배치
+          </button>
+
+          <label for="eyepieceUnits">일치하는 접안 눈금 수 (a)</label>
+          <input type="number" id="eyepieceUnits" value="10" min="1" step="0.1" />
+
+          <label for="stageUnits">일치하는 대물 눈금 수 (b)</label>
+          <input type="number" id="stageUnits" value="10" min="1" step="0.1" />
+
+          <p class="hint">
+            대물 마이크로미터의 1눈금은 10 µm입니다.<br />
+            계산식: (대물 눈금 수 × 10 µm) ÷ 접안 눈금 수
+          </p>
+
+          <button class="btn" id="calibrationButton">
+            현재 배율에서 1눈금 길이 계산
+          </button>
+
+          <div id="calibrationResult" class="result-box">
+            현재 배율의 접안 1눈금 길이: 미측정
+          </div>
+        </div>
+
+        <div class="step-card">
+          <h3>2단계. 세포 크기 측정</h3>
+
+          <label for="sampleSelect">시료 선택</label>
+          <select id="sampleSelect">
+            <option value="micrometer">대물 마이크로미터 (보정용)</option>
+            <option value="onion">양파 표피세포 (장경 약 150 µm)</option>
+            <option value="cheek">구강 상피세포 (지름 약 60 µm)</option>
+          </select>
+
+          <button class="btn btn-secondary" id="resetSampleButton">
+            현재 시료 중앙 배치
+          </button>
+
+          <button class="btn btn-info" id="estimateButton">
+            화면상 예상 접안 눈금 수 확인
+          </button>
+
+          <label for="cellEyepieceUnits">세포가 차지하는 접안 눈금 수</label>
+          <input type="number" id="cellEyepieceUnits" value="0" min="0" step="0.1" />
+
+          <button class="btn" id="cellSizeButton">
+            세포 실제 크기 계산
+          </button>
+
+          <div id="cellResult" class="result-box">
+            세포 크기: 미측정
+          </div>
+
+          <p class="hint">
+            세포의 가장 긴 방향을 기준으로 측정하세요. 양파 표피세포는 장경, 구강 상피세포는 세포의 가장 넓은 지름을 측정합니다.
+          </p>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script>
+    const stageCanvas = document.getElementById("stageCanvas");
+    const stageCtx = stageCanvas.getContext("2d");
+
+    const eyepieceCanvas = document.getElementById("eyepieceCanvas");
+    const eyepieceCtx = eyepieceCanvas.getContext("2d");
+
+    const view = document.getElementById("microscope-view");
+    const magSelect = document.getElementById("magSelect");
+    const sampleSelect = document.getElementById("sampleSelect");
+
+    const calibrationResult = document.getElementById("calibrationResult");
+    const cellResult = document.getElementById("cellResult");
+    const scaleInfo = document.getElementById("scaleInfo");
+
+    const CANVAS_SIZE = 400;
+    const CENTER = CANVAS_SIZE / 2;
+
+    const EYPIECE_START_X = 50;
+    const EYPIECE_END_X = 350;
+    const EYPIECE_Y = 200;
+    const EYPIECE_STEP_PX = 6;
+    const EYPIECE_TOTAL_UNITS = 50;
+
+    /*
+      배율별 접안 마이크로미터 보정값입니다.
+      10× 대물렌즈: 접안 1눈금 = 10 µm
+      40× 대물렌즈: 접안 1눈금 = 2.5 µm
+
+      40×에서는 같은 길이의 물체가 접안 눈금에서 더 많은 눈금을 차지하도록 구성했습니다.
+    */
+    const trueUnitLengthByMagnification = {
+      10: 10,
+      40: 2.5
+    };
+
+    const sampleData = {
+      onion: {
+        name: "양파 표피세포",
+        longAxisMicron: 150,
+        shortAxisMicron: 65
+      },
+      cheek: {
+        name: "구강 상피세포",
+        longAxisMicron: 60,
+        shortAxisMicron: 48
+      }
+    };
+
+    let magnification = 10;
+    let currentSample = "micrometer";
+
+    let stageX = 0;
+    let stageY = 0;
+
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    /*
+      배율마다 독립적으로 저장되는 사용자의 보정값입니다.
+      사용자가 10×와 40×에서 각각 보정해야 합니다.
+    */
+    const calibrationByMagnification = {
+      10: null,
+      40: null
+    };
+
+    function getTrueEyepieceUnitLength() {
+      return trueUnitLengthByMagnification[magnification];
+    }
+
+    function getPixelsPerMicron() {
+      return EYPIECE_STEP_PX / getTrueEyepieceUnitLength();
+    }
+
+    function getCurrentCalibration() {
+      return calibrationByMagnification[magnification];
+    }
+
+    function updateScaleInfo() {
+      const savedCalibration = getCurrentCalibration();
+
+      let calibrationText = "아직 보정하지 않았습니다.";
+
+      if (savedCalibration !== null) {
+        calibrationText = `저장된 보정값: 접안 1눈금 = ${savedCalibration.toFixed(2)} µm`;
+      }
+
+      scaleInfo.innerHTML = `
+        현재 대물렌즈: <strong>${magnification}×</strong><br />
+        ${calibrationText}
+      `;
+    }
+
+    function updateCalibrationResult() {
+      const savedCalibration = getCurrentCalibration();
+
+      if (savedCalibration === null) {
+        calibrationResult.classList.add("warning-box");
+        calibrationResult.innerText =
+          `${magnification}× 대물렌즈의 접안 1눈금 길이: 미측정`;
+        return;
+      }
+
+      calibrationResult.classList.remove("warning-box");
+      calibrationResult.innerText =
+        `${magnification}× 대물렌즈: 접안 1눈금 = ${savedCalibration.toFixed(2)} µm`;
+    }
+
+    function drawEyepieceReticle() {
+      eyepieceCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+      eyepieceCtx.strokeStyle = "#e74c3c";
+      eyepieceCtx.fillStyle = "#e74c3c";
+      eyepieceCtx.lineWidth = 1.5;
+      eyepieceCtx.font = "10px Arial";
+
+      eyepieceCtx.beginPath();
+      eyepieceCtx.moveTo(EYPIECE_START_X, EYPIECE_Y);
+      eyepieceCtx.lineTo(EYPIECE_END_X, EYPIECE_Y);
+
+      for (let i = 0; i <= EYPIECE_TOTAL_UNITS; i += 1) {
+        const x = EYPIECE_START_X + i * EYPIECE_STEP_PX;
+        const height = i % 10 === 0 ? 22 : i % 5 === 0 ? 14 : 8;
+
+        eyepieceCtx.moveTo(x, EYPIECE_Y);
+        eyepieceCtx.lineTo(x, EYPIECE_Y - height);
+
+        if (i % 10 === 0) {
+          eyepieceCtx.fillText(i, x - 5, EYPIECE_Y - 27);
+        }
+      }
+
+      eyepieceCtx.stroke();
+
+      eyepieceCtx.fillStyle = "rgba(231, 76, 60, 0.85)";
+      eyepieceCtx.font = "11px Arial";
+      eyepieceCtx.fillText("접안 마이크로미터", 125, 170);
+    }
+
+    function drawCircularMask() {
+      stageCtx.save();
+      stageCtx.beginPath();
+      stageCtx.arc(CENTER, CENTER, 192, 0, Math.PI * 2);
+      stageCtx.clip();
+      return stageCtx;
+    }
+
+    function drawStage() {
+      stageCtx.clearRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+      drawCircularMask();
+
+      stageCtx.fillStyle = "#f8fafc";
+      stageCtx.fillRect(0, 0, CANVAS_SIZE, CANVAS_SIZE);
+
+      stageCtx.translate(CENTER + stageX, CENTER + stageY);
+
+      if (currentSample === "micrometer") {
+        drawStageMicrometer();
+      }
+
+      if (currentSample === "onion") {
+        drawOnionCell();
+      }
+
+      if (currentSample === "cheek") {
+        drawCheekCell();
+      }
+
+      stageCtx.restore();
+    }
+
+    function drawStageMicrometer() {
+      const pixelPerMicron = getPixelsPerMicron();
+      const stageUnitMicron = 10;
+      const stepPx = stageUnitMicron * pixelPerMicron;
+
+      const visibleUnits = 30;
+      const startX = -(visibleUnits / 2) * stepPx;
+      const y = 20;
+
+      stageCtx.strokeStyle = "#2980b9";
+      stageCtx.fillStyle = "#2980b9";
+      stageCtx.lineWidth = 1.5;
+      stageCtx.font = "10px Arial";
+
+      stageCtx.beginPath();
+      stageCtx.moveTo(startX, y);
+      stageCtx.lineTo(startX + visibleUnits * stepPx, y);
+
+      for (let i = 0; i <= visibleUnits; i += 1) {
+        const x = startX + i * stepPx;
+        const height = i % 5 === 0 ? 22 : 11;
+
+        stageCtx.moveTo(x, y);
+        stageCtx.lineTo(x, y + height);
+
+        if (i % 5 === 0) {
+          stageCtx.fillText(`${i * 10}`, x - 8, y + height + 14);
+        }
+      }
+
+      stageCtx.stroke();
+
+      stageCtx.fillStyle = "rgba(41, 128, 185, 0.9)";
+      stageCtx.font = "11px Arial";
+      stageCtx.fillText("대물 마이크로미터 (1눈금 = 10 µm)", -115, 65);
+    }
+
+    function drawOnionCell() {
+      const pixelPerMicron = getPixelsPerMicron();
+      const data = sampleData.onion;
+
+      const width = data.longAxisMicron * pixelPerMicron;
+      const height = data.shortAxisMicron * pixelPerMicron;
+
+      stageCtx.fillStyle = "rgba(214, 234, 248, 0.78)";
+      stageCtx.strokeStyle = "#2874a6";
+      stageCtx.lineWidth = 2;
+
+      stageCtx.beginPath();
+      stageCtx.roundRect(-width / 2, -height / 2, width, height, 8);
+      stageCtx.fill();
+      stageCtx.stroke();
+
+      stageCtx.fillStyle = "rgba(125, 60, 152, 0.75)";
+      stageCtx.beginPath();
+      stageCtx.arc(width * 0.1, 0, Math.max(5, height * 0.17), 0, Math.PI * 2);
+      stageCtx.fill();
+
+      stageCtx.fillStyle = "#1f618d";
+      stageCtx.font = "12px Arial";
+      stageCtx.fillText("양파 표피세포", -44, -height / 2 - 13);
+    }
+
+    function drawCheekCell() {
+      const pixelPerMicron = getPixelsPerMicron();
+      const data = sampleData.cheek;
+
+      const radiusX = (data.longAxisMicron / 2) * pixelPerMicron;
+      const radiusY = (data.shortAxisMicron / 2) * pixelPerMicron;
+
+      stageCtx.fillStyle = "rgba(245, 183, 177, 0.78)";
+      stageCtx.strokeStyle = "#c0392b";
+      stageCtx.lineWidth = 2;
+
+      stageCtx.beginPath();
+      stageCtx.ellipse(0, 0, radiusX, radiusY, 0.2, 0, Math.PI * 2);
+      stageCtx.fill();
+      stageCtx.stroke();
+
+      stageCtx.fillStyle = "rgba(110, 44, 122, 0.85)";
+      stageCtx.beginPath();
+      stageCtx.arc(radiusX * 0.12, -radiusY * 0.08, Math.max(4, radiusY * 0.18), 0, Math.PI * 2);
+      stageCtx.fill();
+
+      stageCtx.fillStyle = "#922b21";
+      stageCtx.font = "12px Arial";
+      stageCtx.fillText("구강 상피세포", -42, -radiusY - 14);
+    }
+
+    function resetStagePosition() {
+      stageX = 0;
+      stageY = 0;
+      drawStage();
+    }
+
+    function calculateCalibration() {
+      const eyepieceUnits = parseFloat(
+        document.getElementById("eyepieceUnits").value
+      );
+
+      const stageUnits = parseFloat(
+        document.getElementById("stageUnits").value
+      );
+
+      if (!(eyepieceUnits > 0) || !(stageUnits > 0)) {
+        alert("접안 눈금 수와 대물 눈금 수에 0보다 큰 값을 입력하세요.");
+        return;
+      }
+
+      const stageMicrometerUnitMicron = 10;
+      const unitLengthMicron =
+        (stageUnits * stageMicrometerUnitMicron) / eyepieceUnits;
+
+      calibrationByMagnification[magnification] = unitLengthMicron;
+
+      calibrationResult.classList.remove("warning-box");
+      calibrationResult.innerText =
+        `${magnification}× 대물렌즈: (${stageUnits} × 10 µm) ÷ ${eyepieceUnits} = 접안 1눈금 ${unitLengthMicron.toFixed(2)} µm`;
+
+      updateScaleInfo();
+    }
+
+    function showExpectedEyepieceUnits() {
+      if (currentSample === "micrometer") {
+        cellResult.classList.add("warning-box");
+        cellResult.innerText =
+          "대물 마이크로미터는 보정용입니다. 양파 또는 구강 상피세포를 선택하세요.";
+        return;
+      }
+
+      const sample = sampleData[currentSample];
+      const trueUnitLength = getTrueEyepieceUnitLength();
+      const expectedUnits = sample.longAxisMicron / trueUnitLength;
+
+      document.getElementById("cellEyepieceUnits").value =
+        expectedUnits.toFixed(1);
+
+      cellResult.classList.remove("warning-box");
+      cellResult.innerText =
+        `${sample.name}의 화면상 예상 길이: 약 ${expectedUnits.toFixed(1)} 접안 눈금`;
+    }
+
+    function calculateCellSize() {
+      if (currentSample === "micrometer") {
+        cellResult.classList.add("warning-box");
+        cellResult.innerText =
+          "대물 마이크로미터는 세포 측정 대상이 아닙니다. 세포 시료를 선택하세요.";
+        return;
+      }
+
+      const calibratedUnitLength = getCurrentCalibration();
+
+      if (calibratedUnitLength === null) {
+        cellResult.classList.add("warning-box");
+        cellResult.innerText =
+          `먼저 ${magnification}× 대물렌즈에서 접안 마이크로미터를 보정하세요.`;
+        return;
+      }
+
+      const cellEyepieceUnits = parseFloat(
+        document.getElementById("cellEyepieceUnits").value
+      );
+
+      if (!(cellEyepieceUnits > 0)) {
+        alert("세포가 차지하는 접안 눈금 수에 0보다 큰 값을 입력하세요.");
+        return;
+      }
+
+      const cellSizeMicron = cellEyepieceUnits * calibratedUnitLength;
+
+      cellResult.classList.remove("warning-box");
+      cellResult.innerText =
+        `세포 실제 크기 = ${cellEyepieceUnits.toFixed(1)}눈금 × ${calibratedUnitLength.toFixed(2)} µm = ${cellSizeMicron.toFixed(1)} µm`;
+    }
+
+    function changeMagnification() {
+      magnification = parseInt(magSelect.value, 10);
+
+      updateCalibrationResult();
+      updateScaleInfo();
+      resetStagePosition();
+
+      cellResult.classList.add("warning-box");
+      cellResult.innerText =
+        `${magnification}× 대물렌즈로 변경되었습니다. 이 배율의 보정값을 확인하세요.`;
+    }
+
+    function changeSample() {
+      currentSample = sampleSelect.value;
+      resetStagePosition();
+
+      if (currentSample === "micrometer") {
+        cellResult.classList.remove("warning-box");
+        cellResult.innerText = "세포 크기: 미측정";
+      } else {
+        const sample = sampleData[currentSample];
+        cellResult.classList.remove("warning-box");
+        cellResult.innerText =
+          `${sample.name}를 선택했습니다. 가장 긴 방향의 접안 눈금 수를 측정하세요.`;
+      }
+    }
+
+    view.addEventListener("pointerdown", (event) => {
+      isDragging = true;
+      view.setPointerCapture(event.pointerId);
+
+      dragStartX = event.clientX - stageX;
+      dragStartY = event.clientY - stageY;
+    });
+
+    view.addEventListener("pointermove", (event) => {
+      if (!isDragging) {
+        return;
+      }
+
+      stageX = event.clientX - dragStartX;
+      stageY = event.clientY - dragStartY;
+
+      drawStage();
+    });
+
+    view.addEventListener("pointerup", () => {
+      isDragging = false;
+    });
+
+    view.addEventListener("pointercancel", () => {
+      isDragging = false;
+    });
+
+    magSelect.addEventListener("change", changeMagnification);
+    sampleSelect.addEventListener("change", changeSample);
+
+    document
+      .getElementById("resetMicrometerButton")
+      .addEventListener("click", () => {
+        currentSample = "micrometer";
+        sampleSelect.value = "micrometer";
+        resetStagePosition();
+      });
+
+    document
+      .getElementById("resetSampleButton")
+      .addEventListener("click", resetStagePosition);
+
+    document
+      .getElementById("calibrationButton")
+      .addEventListener("click", calculateCalibration);
+
+    document
+      .getElementById("estimateButton")
+      .addEventListener("click", showExpectedEyepieceUnits);
+
+    document
+      .getElementById("cellSizeButton")
+      .addEventListener("click", calculateCellSize);
+
+    drawEyepieceReticle();
+    updateCalibrationResult();
+    updateScaleInfo();
+    drawStage();
+  </script>
+</body>
+</html>
