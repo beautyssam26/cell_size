@@ -8,7 +8,7 @@
   "d1_databases": [{
     "binding": "DB",
     "database_name": "cell-size-lab-db",
-    "database_id": "00000000-0000-4000-8000-000000000000",
+    "database_id": "9bf9c731-8d02-42f3-aea8-17859190b203",
     "migrations_dir": "drizzle"
   }]
 }
